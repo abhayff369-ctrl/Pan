@@ -8,14 +8,14 @@ app = Flask(__name__)
 CORS(app)
 
 # ==========================================
-# Developer
+# Developer Info
 # ==========================================
 DEVELOPER = "Abhay Singh"
 
 # ==========================================
 # Access Token
 # ==========================================
-ACCESS_TOKEN = "eyJraWQiOiJ5eE1hUkU1V0tnMmRZUm1GQUFyZE5CVDNRNzBGaHZVRXI0ZTJiU1hhY2xnPSIsImFsZyI6IlJTMjU2In0.eyJzdWIiOiIyNGU4NzJhYi1lNGFkLTRkNDYtYTNiOC1hMDA4YzdhYzgxNTgiLCJpc3MiOiJodHRwczpcL1wvY29nbml0by1pZHAuYXAtc291dGgtMS5hbWF6b25hd3MuY29tXC9hcC1zb3V0aC0xX3pRWVJuTEhrciIsImNsaWVudF9pZCI6IjRrY28zMWE3YWRhNWRhMTdrZmpidDdqNGg0Iiwib3JpZ2luX2p0aSI6IjcyYzk5YzVkLWQzMDMtNDViMi1iZWYxLTFhMDA1MzU5NDY5OCIsImV2ZW50X2lkIjoiNjUxODQzNjktZGY0Yy00M2E5LTk3NmItM2VkZjcxNWE1MWE3IiwidG9rZW5fdXNlIjoiYWNjZXNzIiwic2NvcGUiOiJhd3MuY29nbml0by5zaWduaW4udXNlci5hZG1pbiIsImF1dGhfdGltZSI6MTc3OTg5MjIzNSwiZXhwIjoxNzc5ODk5NDM1LCJpYXQiOjE3Nzk4OTIyMzUsImp0aSI6IjJlYzc4ZGFiLTRkYzYtNDE5Yi04ZDAwLTkyYmQ1YjM5ODAwNyIsInVzZXJuYW1lIjoibWVyY2hhbnRfb3duZXI6MTI3MTg0MiJ9.EZcu_KrKSetSCgyB4M5DLN0rB662POQGEyh6JAipIBudWTcKsQ3AcG8G2K8i9zUPqfkqMSsEoyIAkNUAnWVBZSpU6yBxwho01nYuaR8XCdg5UZqaVDvIp18rLZxe7bdGpe_Sg9DKcRnd0gQAVJlsyXo_9-FV2rXRegc0-bljapbjWPojqVhE6LNicQEw77DemumxYIZ1hBdcAyjcEgKKxe2IwOjaAm-B1evSUTzWppJDaH4xpx8HuvkICXLt6BFaO2GMre53_OTDn0UMF8EPYLZBS7X4CMIPfKyksv7tlasFpBl-5PnyddKIb0ymKOsqLbTn0QDmYX4AK4iAYcttjg"
+ACCESS_TOKEN = "eyJraWQiOiJ5eE1hUkU1V0tnMmRZUm1GQUFyZE5CVDNRNzBGaHZVRXI0ZTJiU1hhY2xnPSIsImFsZyI6IlJTMjU2In0"
 
 # ==========================================
 # Headers
@@ -33,7 +33,7 @@ DEFAULT_HEADERS = {
 }
 
 # ==========================================
-# PAN Validation
+# Validate PAN
 # ==========================================
 def validate_pan_format(pan_number):
 
@@ -79,8 +79,9 @@ def verify_pan_with_cashfree(pan_number):
             data = response.text
 
         return {
+            "success": True,
             "status_code": response.status_code,
-            "response": data
+            "data": data
         }
 
     except Exception as e:
@@ -91,7 +92,7 @@ def verify_pan_with_cashfree(pan_number):
         }
 
 # ==========================================
-# Home
+# Home Route
 # ==========================================
 @app.route("/", methods=["GET"])
 def home():
@@ -101,17 +102,55 @@ def home():
         "developer": DEVELOPER,
         "message": "PAN Verification API Running",
         "time": datetime.now().isoformat(),
-        "endpoints": {
-            "POST /verify-pan": {
-                "body": {
-                    "pan_number": "ABCDE1234F"
-                }
-            }
+        "routes": {
+            "GET /search-pan?pan=ABCDE1234F": "Browser Search",
+            "POST /verify-pan": "POST API",
+            "GET /health": "Health Check"
         }
     })
 
 # ==========================================
-# Verify PAN API
+# Browser Search Route
+# ==========================================
+@app.route("/search-pan", methods=["GET"])
+def search_pan():
+
+    try:
+
+        pan_number = request.args.get("pan")
+
+        if not pan_number:
+            return jsonify({
+                "success": False,
+                "message": "PAN number required"
+            }), 400
+
+        is_valid, result = validate_pan_format(pan_number)
+
+        if not is_valid:
+            return jsonify({
+                "success": False,
+                "message": result
+            }), 400
+
+        api_result = verify_pan_with_cashfree(result)
+
+        return jsonify({
+            "success": True,
+            "developer": DEVELOPER,
+            "pan_number": result,
+            "result": api_result
+        })
+
+    except Exception as e:
+
+        return jsonify({
+            "success": False,
+            "message": str(e)
+        }), 500
+
+# ==========================================
+# POST Verify Route
 # ==========================================
 @app.route("/verify-pan", methods=["POST"])
 def verify_pan():
@@ -163,7 +202,7 @@ def verify_pan():
         }), 500
 
 # ==========================================
-# Health
+# Health Route
 # ==========================================
 @app.route("/health", methods=["GET"])
 def health():
@@ -175,6 +214,23 @@ def health():
     })
 
 # ==========================================
-# Vercel
+# Run App
+# ==========================================
+if __name__ == "__main__":
+
+    print("=" * 60)
+    print(" PAN Verification API ")
+    print("=" * 60)
+    print(" Developer : Abhay Singh ")
+    print("=" * 60)
+
+    app.run(
+        host="0.0.0.0",
+        port=8000,
+        debug=True
+    )
+
+# ==========================================
+# Vercel Export
 # ==========================================
 app = app
